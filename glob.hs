@@ -1,28 +1,24 @@
 
 import Globber (matchGlob)
 
-import System.Environment
+import System.Environment (getArgs)
 import System.IO
+import Control.Monad (when)
 
 main :: IO ()
 main = do args <- getArgs
-          if (length args) < 1 then 
-              putStrLn "usage: glob <glob-pattern> [file 1] [file 2] ... [file N]"
-          else if (length args) == 1 then do 
-                                       let glob = args !! 0
-                                       string <- getLine
-                                       if (matchGlob glob string) then
-                                           putStrLn $ string
-                                       else
-                                           putStrLn ""
-                                       main
-               else do
-                 let glob = args !! 0
-                     fileNames = tail args
-                     searchFile fileName = do
-                                            fileHandle <- openFile fileName ReadMode
-                                            contents <- hGetContents fileHandle
-                                            let matches = filter (matchGlob glob) . words $ contents
-                                            mapM_ (\match -> putStrLn $ fileName ++ ": " ++ match) matches
-                 mapM searchFile fileNames
-                 return ()
+          case (length args) of
+            0 -> putStrLn "usage: glob <glob-pattern> [file 1] [file 2] ... [file N]"
+            1 -> stdinGlob (args !! 0)
+            _ -> mapM_ (fileGlob (args !! 0)) (tail args)
+
+    where stdinGlob :: String -> IO ()
+          stdinGlob glob = do string <- getLine
+                              when (matchGlob glob string) (putStrLn string)
+                              stdinGlob glob
+
+          fileGlob :: String -> String -> IO ()
+          fileGlob glob fileName = withFile fileName ReadMode $ \h -> 
+                                   do contents <- hGetContents h
+                                      let matches = filter (matchGlob glob) . words $ contents
+                                      mapM_ (\match -> putStrLn $ fileName ++ ": " ++ match) matches
