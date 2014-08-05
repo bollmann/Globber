@@ -2,6 +2,7 @@
 import Globber (matchGlob)
 
 import System.Environment
+import System.IO
 
 main :: IO ()
 main = do args <- getArgs
@@ -15,8 +16,13 @@ main = do args <- getArgs
                                        else
                                            putStrLn ""
                                        main
-               else do undefined -- todo: write function which opens
-                                 -- each file provided on the
-                                 -- command-line and checking if the
-                                 -- provided pattern matches somewhere
-                                 -- inside the file.
+               else do
+                 let glob = args !! 0
+                     fileNames = tail args
+                     searchFile fileName = do
+                                            fileHandle <- openFile fileName ReadMode
+                                            contents <- hGetContents fileHandle
+                                            let matches = filter (matchGlob glob) . words $ contents
+                                            mapM_ (\match -> putStrLn $ fileName ++ ": " ++ match) matches
+                 mapM searchFile fileNames
+                 return ()
